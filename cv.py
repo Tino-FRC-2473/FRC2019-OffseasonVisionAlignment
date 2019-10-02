@@ -9,6 +9,10 @@ import os
 # finds angle between robot's heading and the perpendicular to the targets
 class VisionTargetDetector:
 
+
+
+
+
 	# initilaze variables
 	def __init__(self, input):
 
@@ -102,6 +106,32 @@ class VisionTargetDetector:
 				pairs.append(Pair(rect1, rect2, self))
 
 		return pairs
+	def get_angle_dist(self, pair):
+		#Array of object points(3D points)
+		obj_points = []
+		for p in pair.left_rect.points:
+			obj_points.append([p.x,p.y, 0])
+		for p in pair.right_rect.points:
+			obj_points.append([p.x,p.y, 0])
+		#Array of image points(2D points)
+		img_points = []
+		for p in pair.left_rect.points:
+			img_points.append([p.x,p.y])
+		for p in pair.right_rect.points:
+			img_points.append([p.x,p.y])
+
+		#Convert the object and image point arrays into numpy arrays so they can be passed into solvePnP
+		obj_points = np.float64(obj_points)
+		img_points = np.float64(img_points)
+
+		#Camera matrix
+		camera_matrix = np.float64([[self.FOCAL_LENGTH_PIXELS,0,self.SCREEN_WIDTH/2],
+								  [0,self.FOCAL_LENGTH_PIXELS,self.SCREEN_HEIGHT/2],
+								  [0,0,1]])
+
+		#Returning solvePnP which returns the rotation vector and translation vector
+		bool, rvec, tvec = cv2.solvePnP(obj_points,img_points,camera_matrix, None)
+		return rvec, tvec
 
 	def run_cv(self):
 
@@ -139,6 +169,11 @@ class VisionTargetDetector:
 		for pair in self.get_all_pairs(rotated_boxes):
 			cv2.drawContours(frame, [pair.left_rect.box], 0, (255,0,0), 2)
 			cv2.drawContours(frame, [pair.right_rect.box], 0, (255,0,0), 2)
+			r,t = self.get_angle_dist(pair)
+			print("Rotation vector: ", r)
+			print("Translation vector: ", t)
+
+
 
 		# show windows
 		cv2.imshow("contours: " + str(self.input_path), mask)
