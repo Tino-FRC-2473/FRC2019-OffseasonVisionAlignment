@@ -104,6 +104,7 @@ class VisionTargetDetector:
 				pairs.append(Pair(rect1, rect2, self))
 
 		return pairs
+
 	def get_angle_dist(self, pair):
 
 		w = 48
@@ -124,6 +125,7 @@ class VisionTargetDetector:
 
 		#Array of image points(2D points)
 		img_points = []
+		img_points.append([pair.get_center().x, pair.get_center().y])
 		for p in pair.left_rect.points:
 			img_points.append([p.x,p.y])
 		for p in pair.right_rect.points:
