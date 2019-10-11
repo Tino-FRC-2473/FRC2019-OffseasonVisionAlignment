@@ -5,12 +5,10 @@ import subprocess
 import imghdr
 import traceback
 import os
+from math import sin, cos
 
 # finds angle between robot's heading and the perpendicular to the targets
 class VisionTargetDetector:
-
-
-
 
 
 	# initilaze variables
@@ -107,12 +105,23 @@ class VisionTargetDetector:
 
 		return pairs
 	def get_angle_dist(self, pair):
-		#Array of object points(3D points)
+
+		w = 48
+		h = 36
+		x = 14.5
+
+		# array of object points(3D points)
 		obj_points = []
-		for p in pair.left_rect.points:
-			obj_points.append([p.x,p.y, 0])
-		for p in pair.right_rect.points:
-			obj_points.append([p.x,p.y, 0])
+		obj_points.append([w/2, h/2, 0])
+		obj_points.append([w/2 - 4 - 2*cos(x), 0.5*(h - 5.5*cos(x) - 2*sin(x)), 0]) #A
+		obj_points.append([w/2 - 4, 0.5*(h - 5.5*cos(x) + 2*sin(x)), 0]) #B
+		obj_points.append([w/2 - 4 - 2*cos(x) - 5.5*sin(x), 0.5*(h + 5.5*cos(x) + 6*sin(x)), 0]) #C
+		obj_points.append([w/2 - 4 - 5.5*sin(x), 0.5*(h + 5.5*cos(x) + 2*sin(x)), 0]) #D
+		obj_points.append([w/2 + 4 + 2*cos(x), 0.5*(h - 5.5*cos(x) - 2*sin(x)), 0]) #Q
+		obj_points.append([w/2 + 4, 0.5*(h - 5.5*cos(x) + 2*sin(x)), 0]) #R
+		obj_points.append([w/2 + 4 + 5.5*sin(x) + 2*cos(x), 0.5*(h + 5.5*cos(x) + 6*sin(x)), 0]) #S
+		obj_points.append([w/2 + 4 + 5.5*sin(x), 0.5*(h + 5.5*cos(x) + 2*sin(x)), 0])
+
 		#Array of image points(2D points)
 		img_points = []
 		for p in pair.left_rect.points:
@@ -130,7 +139,7 @@ class VisionTargetDetector:
 								  [0,0,1]])
 
 		#Returning solvePnP which returns the rotation vector and translation vector
-		bool, rvec, tvec = cv2.solvePnP(obj_points,img_points,camera_matrix, None)
+		bool, rvec, tvec = cv2.solvePnP(obj_points, img_points, camera_matrix, None)
 		return rvec, tvec
 
 	def run_cv(self):
