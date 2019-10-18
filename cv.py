@@ -184,6 +184,7 @@ class VisionTargetDetector:
 			print("Rotation vector: ", r)
 			print("Translation vector: ", t)
 
+		return r, t
 
 
 		# show windows
