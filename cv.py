@@ -64,7 +64,7 @@ class VisionTargetDetector:
 		frame = None
 
 		try:
-		    # if input is an image, use cv2.imread()
+			# if input is an image, use cv2.imread()
 			if imghdr.what(self.input_path) is not None:
 				frame = cv2.imread(self.input_path)
 			# if input is a video, use VideoCapture()
@@ -104,6 +104,26 @@ class VisionTargetDetector:
 				pairs.append(Pair(rect1, rect2, self))
 
 		return pairs
+
+	def get_euler_from_rodrigues(self, rmat):
+		sin_x = math.sqrt(rmat[2][0] * rmat[2][0] + rmat[2][1] * rmat[2][1])
+		validity = sin_x < 1e-6
+		if not validity:
+			z1 = math.atan2(rmat[2][0], rmat[2][1])  # around z1-axis
+			x = math.atan2(sin_x, rmat[2][2])  # around x-axis
+			z2 = math.atan2(rmat[0][2], -rmat[1][2])  # around z2-axis
+		else:  # gimbal lock
+			z1 = 0  # around z1-axis
+			x = math.atan2(sin_x, R[2][2])  # around x-axis
+			z2 = 0  # around z2-axis
+
+		euler = np.array([[z1], [x], [z2]])
+
+		euler_deg = -180 * euler / math.pi
+		# euler_deg[0][0] = (360 - euler_deg[0][0])%360
+		euler_deg[1][0] = euler_deg[1][0] + 90
+
+		return euler_deg[0][0], euler_deg[1][0], euler_deg[2][0]
 
 	def get_angle_dist(self, pair):
 
@@ -180,12 +200,12 @@ class VisionTargetDetector:
 		for pair in self.get_all_pairs(rotated_boxes):
 			cv2.drawContours(frame, [pair.left_rect.box], 0, (255,0,0), 2)
 			cv2.drawContours(frame, [pair.right_rect.box], 0, (255,0,0), 2)
-			r,t = self.get_angle_dist(pair)
-			print("Rotation vector: ", r)
-			print("Translation vector: ", t)
-
-		return r, t
-
+			r, t = self.get_angle_dist(pair)
+			rmat, _ = cv2.Rodrigues(r)
+			# print("Rmat: {}\n".format(rmat))
+			yaw, pitch, roll = self.get_euler_from_rodrigues(rmat)
+			print("Yaw: {}\nPitch: {}\nRoll: {}\n".format(yaw, pitch, roll))
+			print("Translation vector: \n", t)
 
 		# show windows
 		cv2.imshow("contours: " + str(self.input_path), mask)
