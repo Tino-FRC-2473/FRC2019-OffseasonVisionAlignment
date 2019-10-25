@@ -169,8 +169,8 @@ class VisionTargetDetector:
 		frame = self.get_frame()
 
 		hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-		low_green = np.array([60,90,50])
-		high_green= np.array([87,255,229])
+        low_green = np.array([65,145,65])
+        high_green= np.array([87,255,229])
 
 		# isolate the desired shades of green
 		mask = cv2.inRange(hsv, low_green, high_green)
