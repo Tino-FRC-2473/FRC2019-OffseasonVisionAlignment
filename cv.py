@@ -169,8 +169,8 @@ class VisionTargetDetector:
 		frame = self.get_frame()
 
 		hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-        low_green = np.array([65,145,65])
-        high_green= np.array([87,255,229])
+		low_green = np.array([65,145,65])
+		high_green= np.array([87,255,229])
 
 		# isolate the desired shades of green
 		mask = cv2.inRange(hsv, low_green, high_green)
@@ -210,6 +210,8 @@ class VisionTargetDetector:
 		# show windows
 		cv2.imshow("contours: " + str(self.input_path), mask)
 		cv2.imshow("frame: " + str(self.input_path), frame)
+
+		return r, t
 
 # this class defines the bounding rectangle of a vision target
 class RotatedRectangle:
