@@ -106,15 +106,14 @@ class VisionTargetDetector:
 		return pairs
 
 	def get_euler_from_rodrigues(self, rmat):
-		sin_x = math.sqrt(rmat[2][0] * rmat[2][0] + rmat[2][1] * rmat[2][1])
-		validity = sin_x < 1e-6
-		if not validity:
+		sin = math.sqrt(rmat[2][0] * rmat[2][0] + rmat[2][1] * rmat[2][1])
+		if sin >= 1e-6:
 			z1 = math.atan2(rmat[2][0], rmat[2][1])  # around z1-axis
-			x = math.atan2(sin_x, rmat[2][2])  # around x-axis
+			x = math.atan2(sin, rmat[2][2])  # around x-axis
 			z2 = math.atan2(rmat[0][2], -rmat[1][2])  # around z2-axis
 		else:  # gimbal lock
 			z1 = 0  # around z1-axis
-			x = math.atan2(sin_x, R[2][2])  # around x-axis
+			x = math.atan2(sin, R[2][2])  # around x-axis
 			z2 = 0  # around z2-axis
 
 		euler = np.array([[z1], [x], [z2]])
@@ -127,21 +126,22 @@ class VisionTargetDetector:
 
 	def get_angle_dist(self, pair):
 
-		w = 48
-		h = 36
-		x = 14.5
+		w = self.SCREEN_WIDTH
+		h = self.SCREEN_HEIGHT
+		x = math.radians(14.5)
+		k = 1
 
 		# array of object points(3D points)
 		obj_points = []
-		obj_points.append([w/2, h/2, 0])
-		obj_points.append([w/2 - 4 - 2*cos(x), 0.5*(h - 5.5*cos(x) - 2*sin(x)), 0]) #A
-		obj_points.append([w/2 - 4, 0.5*(h - 5.5*cos(x) + 2*sin(x)), 0]) #B
-		obj_points.append([w/2 - 4 - 2*cos(x) - 5.5*sin(x), 0.5*(h + 5.5*cos(x) + 6*sin(x)), 0]) #C
-		obj_points.append([w/2 - 4 - 5.5*sin(x), 0.5*(h + 5.5*cos(x) + 2*sin(x)), 0]) #D
-		obj_points.append([w/2 + 4 + 2*cos(x), 0.5*(h - 5.5*cos(x) - 2*sin(x)), 0]) #Q
-		obj_points.append([w/2 + 4, 0.5*(h - 5.5*cos(x) + 2*sin(x)), 0]) #R
-		obj_points.append([w/2 + 4 + 5.5*sin(x) + 2*cos(x), 0.5*(h + 5.5*cos(x) + 6*sin(x)), 0]) #S
-		obj_points.append([w/2 + 4 + 5.5*sin(x), 0.5*(h + 5.5*cos(x) + 2*sin(x)), 0])
+		obj_points.append(k*np.array([w/(2*k), h/(2*k), 0]))
+		obj_points.append(k*np.array([w/(2*k) - 4 - 2*cos(x), 0.5*(h/k - 5.5*cos(x) - 2*sin(x)), 0])) #A
+		obj_points.append(k*np.array([w/(2*k) - 4, 0.5*(h/k - 5.5*cos(x) + 2*sin(x)), 0])) #B
+		obj_points.append(k*np.array([w/(2*k) - 4 - 2*cos(x) - 5.5*sin(x), 0.5*(h/k + 5.5*cos(x) - 2*sin(x)), 0])) #C
+		obj_points.append(k*np.array([w/(2*k) - 4 - 5.5*sin(x), 0.5*(h/k + 5.5*cos(x) + 2*sin(x)), 0])) #D
+		obj_points.append(k*np.array([w/(2*k) + 4 + 2*cos(x), 0.5*(h/k - 5.5*cos(x) - 2*sin(x)), 0])) #Q
+		obj_points.append(k*np.array([w/(2*k) + 4, 0.5*(h/k - 5.5*cos(x) + 2*sin(x)), 0])) #R
+		obj_points.append(k*np.array([w/(2*k) + 4 + 5.5*sin(x) + 2*cos(x), 0.5*(h/k + 5.5*cos(x) - 2*sin(x)), 0])) #S
+		obj_points.append(k*np.array([w/(2*k) + 4 + 5.5*sin(x), 0.5*(h/k + 5.5*cos(x) + 2*sin(x)), 0]))
 
 		#Array of image points(2D points)
 		img_points = []
@@ -162,7 +162,7 @@ class VisionTargetDetector:
 
 		#Returning solvePnP which returns the rotation vector and translation vector
 		bool, rvec, tvec = cv2.solvePnP(obj_points, img_points, camera_matrix, None)
-		return rvec, tvec
+		return rvec, tvec, np.int32(obj_points)
 
 	def run_cv(self):
 
@@ -200,7 +200,7 @@ class VisionTargetDetector:
 		for pair in self.get_all_pairs(rotated_boxes):
 			cv2.drawContours(frame, [pair.left_rect.box], 0, (255,0,0), 2)
 			cv2.drawContours(frame, [pair.right_rect.box], 0, (255,0,0), 2)
-			r, t = self.get_angle_dist(pair)
+			r, t, o = self.get_angle_dist(pair)
 			rmat, _ = cv2.Rodrigues(r)
 			# print("Rmat: {}\n".format(rmat))
 			yaw, pitch, roll = self.get_euler_from_rodrigues(rmat)
@@ -209,6 +209,8 @@ class VisionTargetDetector:
 
 		# show windows
 		cv2.imshow("contours: " + str(self.input_path), mask)
+		# for i in o:
+			# cv2.circle(frame, (i[0], i[1]), 0, (0, 255, 0), 5)
 		cv2.imshow("frame: " + str(self.input_path), frame)
 
 		return r, t
