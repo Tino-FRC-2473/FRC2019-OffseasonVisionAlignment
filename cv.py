@@ -165,12 +165,31 @@ class VisionTargetDetector:
 		return rvec, tvec, np.int32(obj_points)
 
 	def get_corners(self, contour):
+
 		hull = cv2.convexHull(contour)
-		hull = cv2.approxPolyDP(hull, 10, False)
 		hull_changed = []
 		for i in range(len(hull)):
 			hull_changed.append([hull[i][0][0], hull[i][0][1]])
-		return np.int0(hull_changed)
+
+		max = 0
+		max_arr = []
+		for i in range(len(hull_changed)):
+			for j in range(i):
+				for k in range(j):
+					for m in range(k):
+						total = 0
+						total += math.hypot(hull_changed[i][0]-hull_changed[j][0],hull_changed[i][1]-hull_changed[j][1])
+						total += math.hypot(hull_changed[j][0]-hull_changed[k][0],hull_changed[j][1]-hull_changed[k][1])
+						total += math.hypot(hull_changed[k][0]-hull_changed[m][0],hull_changed[k][1]-hull_changed[m][1])
+						total += math.hypot(hull_changed[m][0]-hull_changed[i][0],hull_changed[m][1]-hull_changed[i][1])
+						if(total>max):
+							max = total
+							max_arr = [hull_changed[i],hull_changed[j],hull_changed[k],hull_changed[m]]
+
+		arrmax_changed = []
+		for i in range(len(max_arr)):
+			arrmax_changed.append([max_arr[i]])
+		return np.int0(arrmax_changed)
 
 	def run_cv(self):
 
@@ -197,8 +216,11 @@ class VisionTargetDetector:
 			box = cv2.boxPoints(rect)
 			box = np.int0(box)
 			if area > 100:
-				rotated_boxes.append(RotatedRectangle(box, area, rot_angle))
-				hull = self.get_corners(c)
+				corners = self.get_corners(c)
+				rotated_boxes.append(RotatedRectangle(corners, area, rot_angle))
+				
+				
+				cv2.drawContours(frame, corners, -1, (0,0,255), 2)
 
 		# draw red rectangles around vision targets
 		# for rect in rotated_boxes:
@@ -207,15 +229,15 @@ class VisionTargetDetector:
 
 		# draw bluerectangles around vision target pairs
 
-		for pair in self.get_all_pairs(rotated_boxes):
-			cv2.drawContours(frame, [pair.left_rect.box], 0, (255,0,0), 2)
-			cv2.drawContours(frame, [pair.right_rect.box], 0, (255,0,0), 2)
-			r, t, o = self.get_angle_dist(pair)
-			rmat, _ = cv2.Rodrigues(r)
-			# print("Rmat: {}\n".format(rmat))
-			yaw, pitch, roll = self.get_euler_from_rodrigues(rmat)
-			print("Yaw: {}\nPitch: {}\nRoll: {}\n".format(yaw, pitch, roll))
-			print("Translation vector: \n", t)
+		# for pair in self.get_all_pairs(rotated_boxes):
+		# 	cv2.drawContours(frame, [pair.left_rect.box], 0, (255,0,0), 1)
+		# 	cv2.drawContours(frame, [pair.right_rect.box], 0, (255,0,0), 1)
+		# 	r, t, o = self.get_angle_dist(pair)
+		# 	rmat, _ = cv2.Rodrigues(r)
+		# 	# print("Rmat: {}\n".format(rmat))
+		# 	yaw, pitch, roll = self.get_euler_from_rodrigues(rmat)
+		# 	print("Yaw: {}\nPitch: {}\nRoll: {}\n".format(yaw, pitch, roll))
+		# 	print("Translation vector: \n", t)
 
 		# show windows
 		cv2.imshow("contours: " + str(self.input_path), mask)
@@ -236,7 +258,7 @@ class RotatedRectangle:
 
 		points = []
 		for coordinates in box:
-			points.append(Point(coordinates[0], coordinates[1]))
+			points.append(Point(coordinates[0][0], coordinates[0][1]))
 
 		# sorts points based on y value
 		points.sort(key = lambda x: x.y)
