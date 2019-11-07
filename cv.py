@@ -45,7 +45,7 @@ class VisionTargetDetector:
 	def __exit__(self, type, value, tb):
 		self.input.release()
 		cv2.destroyAllWindows()
-		print("exited")
+		print("\nexited")
 
 	# sets exposure of the camera (will only work on Linux systems)
 	def set_camera_settings(self, camera_port):
@@ -85,7 +85,7 @@ class VisionTargetDetector:
 		closest_pair = pairs[int(len(pairs)/2)]
 
 		for pair in pairs:
-			if abs(self.SCREEN_WIDTH/2 - pair.get_center()[0]) < abs(self.SCREEN_WIDTH/2 - closest_pair.get_center()[0]):
+			if abs(self.SCREEN_WIDTH/2 - pair.get_center().x) < abs(self.SCREEN_WIDTH/2 - closest_pair.get_center().x):
 				closest_pair = pair
 
 		return closest_pair
@@ -218,35 +218,25 @@ class VisionTargetDetector:
 			if area > 100:
 				corners = self.get_corners(c)
 				rotated_boxes.append(RotatedRectangle(corners, area, rot_angle))
-				
-				
+
+
 				cv2.drawContours(frame, corners, -1, (0,0,255), 2)
 
-		# draw red rectangles around vision targets
-		# for rect in rotated_boxes:
-		# 	cv2.drawContours(frame, [rect.box], 0, (0,0,255), 2)
-		# 	cv2.drawContours(frame, [rect.box], 0, (0,0,255), 2)
+		pair = self.get_closest_pair(self.get_all_pairs(rotated_boxes))
+		cv2.drawContours(frame, [pair.left_rect.box], 0, (255,0,0), 1)
+		cv2.drawContours(frame, [pair.right_rect.box], 0, (255,0,0), 1)
+		r, t, o = self.get_angle_dist(pair)
+		rmat, _ = cv2.Rodrigues(r)
 
-		# draw bluerectangles around vision target pairs
-
-		# for pair in self.get_all_pairs(rotated_boxes):
-		# 	cv2.drawContours(frame, [pair.left_rect.box], 0, (255,0,0), 1)
-		# 	cv2.drawContours(frame, [pair.right_rect.box], 0, (255,0,0), 1)
-		# 	r, t, o = self.get_angle_dist(pair)
-		# 	rmat, _ = cv2.Rodrigues(r)
-		# 	# print("Rmat: {}\n".format(rmat))
-		# 	yaw, pitch, roll = self.get_euler_from_rodrigues(rmat)
-		# 	print("Yaw: {}\nPitch: {}\nRoll: {}\n".format(yaw, pitch, roll))
-		# 	print("Translation vector: \n", t)
+		yaw, pitch, roll = self.get_euler_from_rodrigues(rmat)
+		print("\nYaw: {}\nPitch: {}\nRoll: {}\n".format(yaw, pitch, roll))
+		print("Translation vector: \n", t)
 
 		# show windows
 		cv2.imshow("contours: " + str(self.input_path), mask)
-		# for i in o:
-			# cv2.circle(frame, (i[0], i[1]), 0, (0, 255, 0), 5)
 		cv2.imshow("frame: " + str(self.input_path), frame)
 
-		#return r, t
-
+		return [yaw, pitch, roll], t
 
 # this class defines the bounding rectangle of a vision target
 class RotatedRectangle:
