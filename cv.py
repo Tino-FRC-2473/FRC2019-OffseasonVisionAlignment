@@ -10,7 +10,6 @@ from math import sin, cos
 # finds angle between robot's heading and the perpendicular to the targets
 class VisionTargetDetector:
 
-
 	# initilaze variables
 	def __init__(self, input):
 
@@ -38,6 +37,8 @@ class VisionTargetDetector:
 		# calculates focal length based on a right triangle representing the "image" side of a pinhole camera
 		# ABC where A is FIELD_OF_VIEW_RAD/2, a is SCREEN_WIDTH/2, and b is the focal length
 		self.FOCAL_LENGTH_PIXELS = (self.SCREEN_WIDTH / 2.0) / math.tan(self.FIELD_OF_VIEW_RAD / 2.0)
+
+		self.OBJ_POINT_SCALE = self.FOCAL_LENGTH_PIXELS * 5.5 / 24
 
 	def __enter__(self):
 		return self
@@ -113,14 +114,14 @@ class VisionTargetDetector:
 			z2 = math.atan2(rmat[0][2], -rmat[1][2])  # around z2-axis
 		else:  # gimbal lock
 			z1 = 0  # around z1-axis
-			x = math.atan2(sin, R[2][2])  # around x-axis
+			x = math.atan2(sin, rmat[2][2])  # around x-axis
 			z2 = 0  # around z2-axis
 
 		euler = np.array([[z1], [x], [z2]])
 
 		euler_deg = -180 * euler / math.pi
 		# euler_deg[0][0] = (360 - euler_deg[0][0])%360
-		euler_deg[1][0] = euler_deg[1][0] + 90
+		euler_deg[1][0] = euler_deg[1][0]
 
 		return euler_deg[0][0], euler_deg[1][0], euler_deg[2][0]
 
@@ -129,7 +130,9 @@ class VisionTargetDetector:
 		w = self.SCREEN_WIDTH
 		h = self.SCREEN_HEIGHT
 		x = math.radians(14.5)
-		k = 1
+
+		# k = self.OBJ_POINT_SCALE / math.hypot(2, 5.5)
+		k = 9
 
 		# array of object points(3D points)
 		obj_points = []
@@ -151,8 +154,20 @@ class VisionTargetDetector:
 		for p in pair.right_rect.points:
 			img_points.append([p.x,p.y])
 
+		frame = self.get_frame()
+		for p in img_points:
+			cv2.circle(frame, (int(p[0]), int(p[1])), 5, (255,0,255), 5)
+			print("hi")
+
+		cv2.imshow("hi", frame)
+
+		# img_points = []
+		# for p in self.obj_points:
+		# 	img_points.append([2*p[0] + 160, 2*p[1]])
+
 		#Convert the object and image point arrays into numpy arrays so they can be passed into solvePnP
 		obj_points = np.float64(obj_points)
+		# img_points = np.float64(obj_points)
 		img_points = np.float64(img_points)
 
 		#Camera matrix
@@ -219,7 +234,6 @@ class VisionTargetDetector:
 				corners = self.get_corners(c)
 				rotated_boxes.append(RotatedRectangle(corners, area, rot_angle))
 
-
 				cv2.drawContours(frame, corners, -1, (0,0,255), 2)
 
 		pair = self.get_closest_pair(self.get_all_pairs(rotated_boxes))
@@ -231,6 +245,9 @@ class VisionTargetDetector:
 		yaw, pitch, roll = self.get_euler_from_rodrigues(rmat)
 		print("\nYaw: {}\nPitch: {}\nRoll: {}\n".format(yaw, pitch, roll))
 		print("Translation vector: \n", t)
+
+		for i in o:
+			cv2.circle(frame, (i[0], i[1]), 1, (225,0,0), 5)
 
 		# show windows
 		cv2.imshow("contours: " + str(self.input_path), mask)
@@ -265,7 +282,7 @@ class RotatedRectangle:
 
 	def get_center(self):
 		x = sum(point.x for point in self.points)/4
-		y = sum(point.x for point in self.points)/4
+		y = sum(point.y for point in self.points)/4
 		return Point(x, y)
 
 # this class defines a point
@@ -274,6 +291,9 @@ class Point:
 	def __init__(self, x, y):
 		self.x = x
 		self.y = y
+
+	def get_coordinate(self):
+		return [self.x, self.y]
 
 # this class defines a pair of vision targets
 class Pair:
