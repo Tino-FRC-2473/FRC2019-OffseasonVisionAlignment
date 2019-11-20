@@ -6,6 +6,10 @@ import imghdr
 import traceback
 import os
 from math import sin, cos
+import pyrealsense2
+
+pipeline = rs.pipeline()
+pipeline.start()
 
 # finds angle between robot's heading and the perpendicular to the targets
 class VisionTargetDetector:
@@ -61,8 +65,10 @@ class VisionTargetDetector:
 	# returns a frame corresponding to the input type
 	def get_frame(self):
 
-		frame = None
-
+		#frame = None
+		frames = pipeline.wait_for_frames()
+        depth = frames.get_depth_frame()
+        print(depth.get_distance(0,0))
 		try:
 			# if input is an image, use cv2.imread()
 			if imghdr.what(self.input_path) is not None:
@@ -192,49 +198,50 @@ class VisionTargetDetector:
 		return np.int0(arrmax_changed)
 
 	def run_cv(self):
+		while True:
+			frame = self.get_frame()
 
-		frame = self.get_frame()
+			hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+			low_green = np.array([65,145,65])
+			high_green= np.array([87,255,229])
 
-		hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-		low_green = np.array([65,145,65])
-		high_green= np.array([87,255,229])
+			# isolate the desired shades of green
+			mask = cv2.inRange(hsv, low_green, high_green)
+			contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-		# isolate the desired shades of green
-		mask = cv2.inRange(hsv, low_green, high_green)
-		contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+			# sort contours by x-coordinate
+			contours.sort(key = lambda countour: cv2.boundingRect(countour)[0])
 
-		# sort contours by x-coordinate
-		contours.sort(key = lambda countour: cv2.boundingRect(countour)[0])
+			rotated_boxes = []
 
-		rotated_boxes = []
-
-		# convert contours into rectangles
-		for c in contours:
-			area = cv2.contourArea(c)
-			rect = cv2.minAreaRect(c)
-			_, _, rot_angle = rect
-			box = cv2.boxPoints(rect)
-			box = np.int0(box)
-			if area > 100:
-				corners = self.get_corners(c)
-				rotated_boxes.append(RotatedRectangle(corners, area, rot_angle))
+			# convert contours into rectangles
+			for c in contours:
+				area = cv2.contourArea(c)
+				rect = cv2.minAreaRect(c)
+				_, _, rot_angle = rect
+				box = cv2.boxPoints(rect)
+				box = np.int0(box)
+				if area > 100:
+					corners = self.get_corners(c)
+					rotated_boxes.append(RotatedRectangle(corners, area, rot_angle))
 
 
-				cv2.drawContours(frame, corners, -1, (0,0,255), 2)
+					cv2.drawContours(frame, corners, -1, (0,0,255), 2)
 
-		pair = self.get_closest_pair(self.get_all_pairs(rotated_boxes))
-		cv2.drawContours(frame, [pair.left_rect.box], 0, (255,0,0), 1)
-		cv2.drawContours(frame, [pair.right_rect.box], 0, (255,0,0), 1)
-		r, t, o = self.get_angle_dist(pair)
-		rmat, _ = cv2.Rodrigues(r)
+			pair = self.get_closest_pair(self.get_all_pairs(rotated_boxes))
+			cv2.drawContours(frame, [pair.left_rect.box], 0, (255,0,0), 1)
+			cv2.drawContours(frame, [pair.right_rect.box], 0, (255,0,0), 1)
+			r, t, o = self.get_angle_dist(pair)
+			rmat, _ = cv2.Rodrigues(r)
 
-		yaw, pitch, roll = self.get_euler_from_rodrigues(rmat)
-		print("\nYaw: {}\nPitch: {}\nRoll: {}\n".format(yaw, pitch, roll))
-		print("Translation vector: \n", t)
+			yaw, pitch, roll = self.get_euler_from_rodrigues(rmat)
+			print("\nYaw: {}\nPitch: {}\nRoll: {}\n".format(yaw, pitch, roll))
+			print("Translation vector: \n", t)
 
-		# show windows
-		cv2.imshow("contours: " + str(self.input_path), mask)
-		cv2.imshow("frame: " + str(self.input_path), frame)
+			# show windows
+			cv2.imshow("contours: " + str(self.input_path), mask)
+			cv2.imshow("frame: " + str(self.input_path), frame)
+		}
 
 		return [yaw, pitch, roll], t
 
