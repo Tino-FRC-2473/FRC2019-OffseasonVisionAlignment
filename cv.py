@@ -216,7 +216,12 @@ class VisionTargetDetector:
 
 		# isolate the desired shades of green
 		mask = cv2.inRange(hsv, low_green, high_green)
-		contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+		if (self.input_path.isdigit()):
+			_, contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+		else:
+			contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
 
 		# sort contours by x-coordinate
 		contours.sort(key = lambda countour: cv2.boundingRect(countour)[0])
