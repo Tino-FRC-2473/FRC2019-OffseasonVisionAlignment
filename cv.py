@@ -81,7 +81,7 @@ class VisionTargetDetector:
 	def get_closest_pair(self, pairs):
 
 		if len(pairs) == 0:
-			return []
+			return None
 
 		closest_pair = pairs[int(len(pairs)/2)]
 
@@ -113,9 +113,9 @@ class VisionTargetDetector:
 			x = math.atan2(sin, rmat[2][2])  # around x-axis
 			z2 = math.atan2(rmat[0][2], -rmat[1][2])  # around z2-axis
 		else:  # gimbal lock
-			z1 = 0  # around z1-axis
+			z1 = 0	# around z1-axis
 			x = math.atan2(sin, rmat[2][2])  # around x-axis
-			z2 = 0  # around z2-axis
+			z2 = 0	# around z2-axis
 
 		euler = np.array([[z1], [x], [z2]])
 
@@ -163,7 +163,7 @@ class VisionTargetDetector:
 
 		# img_points = []
 		# for p in self.obj_points:
-		# 	img_points.append([2*p[0] + 160, 2*p[1]])
+		#	img_points.append([2*p[0] + 160, 2*p[1]])
 
 		#Convert the object and image point arrays into numpy arrays so they can be passed into solvePnP
 		obj_points = np.float64(obj_points)
@@ -240,8 +240,14 @@ class VisionTargetDetector:
 				rotated_boxes.append(RotatedRectangle(corners, area, rot_angle))
 
 				cv2.drawContours(frame, corners, -1, (0,0,255), 2)
-
+				
 		pair = self.get_closest_pair(self.get_all_pairs(rotated_boxes))
+
+		if pair is None:
+			cv2.imshow("contours: " + str(self.input_path), mask)
+			cv2.imshow("frame: " + str(self.input_path), frame)
+			return [-999, -999, -999], [0, 0, 0]
+
 		cv2.drawContours(frame, [pair.left_rect.box], 0, (255,0,0), 1)
 		cv2.drawContours(frame, [pair.right_rect.box], 0, (255,0,0), 1)
 		r, t, o = self.get_angle_dist(pair)
