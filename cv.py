@@ -157,9 +157,8 @@ class VisionTargetDetector:
 		frame = self.get_frame()
 		for p in img_points:
 			cv2.circle(frame, (int(p[0]), int(p[1])), 5, (255,0,255), 5)
-			print("hi")
 
-		cv2.imshow("hi", frame)
+		cv2.imshow("points", frame)
 
 		# img_points = []
 		# for p in self.obj_points:
@@ -240,7 +239,7 @@ class VisionTargetDetector:
 				rotated_boxes.append(RotatedRectangle(corners, area, rot_angle))
 
 				cv2.drawContours(frame, corners, -1, (0,0,255), 2)
-				
+
 		pair = self.get_closest_pair(self.get_all_pairs(rotated_boxes))
 
 		if pair is None:
@@ -254,8 +253,12 @@ class VisionTargetDetector:
 		rmat, _ = cv2.Rodrigues(r)
 
 		yaw, pitch, roll = self.get_euler_from_rodrigues(rmat)
-		print("\nYaw: {}\nPitch: {}\nRoll: {}\n".format(yaw, pitch, roll))
-		print("Translation vector: \n", t)
+
+		font = cv2.FONT_HERSHEY_SIMPLEX
+		cv2.putText(frame, "Pitch: " + str(pitch), (20, self.SCREEN_HEIGHT - 40), font, 1, (255,255,255), 2, cv2.LINE_AA)
+
+		# print("\nYaw: {}\nPitch: {}\nRoll: {}\n".format(yaw, pitch, roll))
+		# print("Translation vector: \n", t)
 
 		for i in o:
 			cv2.circle(frame, (i[0], i[1]), 1, (225,0,0), 5)
